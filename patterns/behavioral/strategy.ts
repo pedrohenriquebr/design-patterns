@@ -1,4 +1,4 @@
-import { Emojis } from "./enums";
+import { Emojis } from "../../enums/emojis";
 
 export namespace Strategy {
   export abstract class Duck {

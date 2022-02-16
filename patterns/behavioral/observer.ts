@@ -1,5 +1,5 @@
-import { FAKE_NEWS } from "./mock";
-import { Emojis } from "./enums";
+import { FAKE_NEWS } from "../../mocks/fake_news";
+import { Emojis } from "../../enums/emojis";
 export namespace Observer {
   export interface Observable<T> {
     subscribe(observer: Observer<T>): void;
