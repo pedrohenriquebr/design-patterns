@@ -2,16 +2,16 @@ import { Emojis } from "../../enums/emojis";
 
 export namespace Strategy {
   export abstract class Duck {
-    private _flyBehavior: FlyBehavior;
-    private _quackBehavior: QuackBehavior;
+    private _flyBehavior?: FlyBehavior;
+    private _quackBehavior?: QuackBehavior;
     abstract display(): void;
 
     public performFly(): void {
-      this._flyBehavior.fly();
+      this._flyBehavior?.fly();
     }
 
     public performQuack(): void {
-      this._quackBehavior.quack();
+      this._quackBehavior?.quack();
     }
 
     public setFlyBehavior(fb: FlyBehavior): void {
@@ -23,11 +23,11 @@ export namespace Strategy {
     }
 
     public get flyBehavior(): FlyBehavior {
-      return this._flyBehavior;
+      return this._flyBehavior ?? new FlyWithWings();
     }
 
     public get quackBehavior(): QuackBehavior {
-      return this._quackBehavior;
+      return this._quackBehavior ?? new Quack();
     }
   }
 

@@ -59,10 +59,10 @@ export namespace Builder.Pseudocode {
 export namespace Builder {
   export interface Builder {
     reset();
-    setSeats(number);
-    setEngine(engine);
-    setTripComputer(tripComputer);
-    setGPS(gps);
+    setSeats(number: number):void;
+    setEngine(engine: string):void;
+    setTripComputer(tripComputer: boolean):void;
+    setGPS(gps:boolean):void;
   }
 
   export class Car {

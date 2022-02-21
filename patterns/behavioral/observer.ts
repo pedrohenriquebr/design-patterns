@@ -11,7 +11,7 @@ export namespace Observer {
 
   export class Subject implements Observable<NewsContent> {
     private observers: Observer<NewsContent>[] = [];
-    private state: NewsContent;
+    private state: NewsContent = '';
     subscribe(observer: Observer<NewsContent>): void {
       this.observers.push(observer);
     }
