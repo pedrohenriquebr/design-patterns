@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import glob from "glob";
+import prompts from "prompts";
 export namespace Composite {
   export class Helpers {
     public static titleCase(rootName: string): string {
@@ -204,7 +205,6 @@ export namespace Composite {
       const nameSpaces = names
         .slice(0, length - 1)
         .map((name) => new NameSpaceContainer(name));
-      console.log(nameSpaces);
       leaf.setSuperClassName(superClassName);
       return [leaf, ...nameSpaces];
     }
@@ -238,5 +238,47 @@ export namespace Composite {
       });
     }
 
+  }
+
+
+  export class Invoker {
+    public run(){
+      (async () => {
+        const path  = await prompts({
+          type: "text",
+          name: "path",
+          message: "Enter path to the directory containing the models"
+        });
+
+        const outDir = await prompts({
+          type: "text",
+          name: "outDir",
+          message: "Enter path to the directory where the models will be saved"
+        });
+
+        const builder = new NameSpaceBuilder();
+        // const fileStream = new FileStream(builder);
+        const dirs = Helpers.listDir(path.path);
+
+        const response = await prompts({
+          type: "select",
+          name: "model",
+          message: "Pick a model",
+          choices: [
+            { title: "All", value: "all" },
+            ...dirs.map((d) => {
+              return { title: d, value: d };
+            })
+          ],
+        });
+
+        if (response.model == "all") {
+          new FileStream(builder).saveToFile(path.path, outDir.outDir);
+        } else {
+          // do nothing
+        }
+      
+      })()
+    }
   }
 }
