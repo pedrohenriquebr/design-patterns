@@ -114,11 +114,14 @@ export namespace Composite {
     private flatNameSpaces: Map<string, Component> = new Map();
     private lastNameSpace: string[] = [];
 
-    public build(filePath: string): NameSpaceContainer {
+    public build(filePath: string, models: string[] = []): NameSpaceContainer {
       // const paths = glob.sync(filePath + "/**/*.model.ts");
-      const paths = glob.sync(filePath + "/*");
+      let paths = glob.sync(filePath + "/*");
       const rootName = Helpers.titleCase(filePath.split("/").pop() as string);
       const rootNamespace = new NameSpaceContainer(rootName);
+      if (models.length > 0) {
+        paths = paths.filter((p) => models.indexOf(p) >= 0);
+      }
       paths.forEach((path) => {
         // check if file is a directory
         if (fs.lstatSync(path).isDirectory()) {
@@ -132,22 +135,22 @@ export namespace Composite {
           if (namespaces.length == 0) {
             rootNamespace.add(leaf);
           } else {
-            let result = (namespaces
-              .map((n) => {
+            let result = (
+              namespaces.map((n) => {
                 if (this.flatNameSpaces.has(n.name)) {
                   return this.flatNameSpaces.get(n.name);
                 }
                 this.flatNameSpaces.set(n.name, n);
                 return n;
-              }) as NameSpaceContainer[])
-              .reduce((prev, cur) => {
-                if (prev.contains(cur.name)) {
-                  return cur;
-                }
-
-                prev.add(cur);
+              }) as NameSpaceContainer[]
+            ).reduce((prev, cur) => {
+              if (prev.contains(cur.name)) {
                 return cur;
-              }, rootNamespace);
+              }
+
+              prev.add(cur);
+              return cur;
+            }, rootNamespace);
             result.add(leaf);
           }
         }
@@ -208,8 +211,6 @@ export namespace Composite {
       leaf.setSuperClassName(superClassName);
       return [leaf, ...nameSpaces];
     }
-
-   
   }
 
   export class FileStream {
@@ -217,7 +218,7 @@ export namespace Composite {
     constructor(builder: NameSpaceBuilder) {
       this.builder = builder;
     }
-    public saveToFile(srcPath: string, outDir: string) {
+    public saveToFile(srcPath: string, outDir: string, models: string[] = []) {
       // list dir and get all dirs
       const files = Helpers.listDir(srcPath);
       const nameSpaces = files.map((file) => {
@@ -225,7 +226,7 @@ export namespace Composite {
         if (!fs.lstatSync(srcPath + "/" + file).isDirectory()) {
           return null;
         }
-        return this.builder.build(srcPath + "/" + file);
+        return this.builder.build(srcPath + "/" + file, models);
       });
 
       nameSpaces.forEach((ns) => {
@@ -237,23 +238,21 @@ export namespace Composite {
         fs.writeFileSync(fullPath, ns.execute());
       });
     }
-
   }
 
-
   export class Invoker {
-    public run(){
+    public run() {
       (async () => {
-        const path  = await prompts({
+        const path = await prompts({
           type: "text",
           name: "path",
-          message: "Enter path to the directory containing the models"
+          message: "Enter path to the directory containing the models",
         });
 
         const outDir = await prompts({
           type: "text",
           name: "outDir",
-          message: "Enter path to the directory where the models will be saved"
+          message: "Enter path to the directory where the models will be saved",
         });
 
         const builder = new NameSpaceBuilder();
@@ -268,17 +267,16 @@ export namespace Composite {
             { title: "All", value: "all" },
             ...dirs.map((d) => {
               return { title: d, value: d };
-            })
+            }),
           ],
         });
 
         if (response.model == "all") {
           new FileStream(builder).saveToFile(path.path, outDir.outDir);
         } else {
-          // do nothing
+          new FileStream(builder).saveToFile(path.path, outDir.outDir, [...response.model]);
         }
-      
-      })()
+      })();
     }
   }
 }
