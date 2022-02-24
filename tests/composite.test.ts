@@ -63,6 +63,29 @@ describe("Helpers", () => {
       "bussiness-logic"
     );
   });
+
+  it('to title case', () => {
+    expect(Composite.Helpers.titleCase("bussiness-logic")).toBe('BussinessLogic');
+  });
+
+  it('indent line', () => {
+    const line  = 'O Rebolation, tion. O rebolation.';
+    expect(Composite.Helpers.indent(2) + line).toBe(`  ${line}`);
+  });
+
+  it('indent multiple lines', () => {
+    const lines = 'Rebolation é bom! Bom!\n'+
+    'Rebolation é bom! Bom! Bom!\n'+
+    'Rebolation é bom! Bom!\n'+
+    'Se você fizer fica melhor';
+
+    const expected = '  Rebolation é bom! Bom!\n'+
+    '  Rebolation é bom! Bom! Bom!\n'+
+    '  Rebolation é bom! Bom!\n'+
+    '  Se você fizer fica melhor\n';
+    
+    expect(Composite.Helpers.indentString(lines, 2)).toBe(expected);
+  });
 });
 describe("find all files in directory with format [bussiness-logic-foo-bar].model.ts", () => {
   const rootTree = obj.build(ROOT_DIR + "bussiness-logic");
