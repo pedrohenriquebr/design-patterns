@@ -115,12 +115,24 @@ describe('Test the leaf components', () => {
     expect(leaf.getFullQualifiedName(5)).toBe(getFullName(5));
 
   });
+
+  it('Set the full qualified class and checks if it is the same', () => {
+    const fullName  = ["Hero","SpiderMan", new Composite.NameSpaceContainer("PeterParker"), "Marvel"];
+    leaf.setFullQualifiedName(fullName);
+    expect(leaf.getFullQualifiedName()).toBe('Hero.SpiderMan.PeterParker.Marvel.Example');
+  });
   
+
+  it('check the content ', () => {
+    expect(leaf.execute()).toBe('export class Example extends Example2{\n'+ 
+      '  projectName: string;\n'+
+      '  statusId?: number;\n'+'}\n');
+  });
 });
 
 // for each file:
 // find the class definition and split the class name into parts
 // 1. create a namespace for each part, exclude the last part
 // 2. create a class for the last part
-// 3. if the class name matches the directory name, add it to the namespace
+// 3. if the class namen m'aches the directory name, add it to the namespace
 // 4. if the class name does not match the directory name, add it to the last namespace
