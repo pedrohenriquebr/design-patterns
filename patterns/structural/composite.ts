@@ -59,12 +59,14 @@ export namespace Composite {
   export interface Component {
     execute(): string;
     name: string;
+
   }
 
   export class ClassLeaf implements Component {
-    private content: string = "";
     public name: string = "";
     public superClassName: string = "";
+    private content: string = "";
+    private fullQualifiedName: string[] = [];
 
     constructor(name: string, content: string) {
       this.content = content;
@@ -74,6 +76,39 @@ export namespace Composite {
     public setSuperClassName(superClassName: string) {
       this.superClassName = superClassName;
     }
+
+    /** Returns the full qualified name of the class based on namespaces
+     *
+     * Format: "Foo.Bar.Baz"
+     * @param  {number} [level=0] - the level of the namespace.
+     * @returns {string} full qualified name
+     */
+    public getFullQualifiedName(level: number = 0): string {
+      return this.fullQualifiedName.slice(level).concat(this.name).join(".");
+    }
+    
+    /** Set the full qualified name of the class based on namespaces
+     * @param  {(string|NameSpaceContainer)[]} fullQualifiedName
+     */
+    public setFullQualifiedName(
+      fullQualifiedName: (string|NameSpaceContainer)[]
+    ) {
+      this.fullQualifiedName = fullQualifiedName.map((d) => {
+        if (typeof d === "string") {
+          return d;
+        } else {
+          return d.name;
+        }
+      });
+    }
+    
+    /** Returns if has a super class
+     * @returns boolean
+     */
+    public get hasSuperClass(): boolean {
+      return this.superClassName !== "";
+    }
+    
 
     execute(): string {
       let result = "";
@@ -114,6 +149,12 @@ export namespace Composite {
     private flatNameSpaces: Map<string, Component> = new Map();
     private lastNameSpace: string[] = [];
 
+    
+    /** Generate a name space from a path
+     * @param  {string} filePath
+     * @param  {string[]=[]} models
+     * @returns NameSpaceContainer
+     */
     public build(filePath: string, models: string[] = []): NameSpaceContainer {
       // const paths = glob.sync(filePath + "/**/*.model.ts");
       let paths = glob.sync(filePath + "/*");
@@ -158,7 +199,19 @@ export namespace Composite {
 
       return rootNamespace;
     }
-    public processModelFile(path: string, rootNameSpace: string): Component[] {
+    
+    /** Generate a leaf from a path
+     * 
+     * Usage:
+     * 
+     * ```typescript
+     * const [leaf, ...namespaces] = this.processModelFile(path, rootName);
+     * ```
+     * @param  {string} path a path to a model file
+     * @param  {string} rootNameSpace a title case name of the root namespace
+     * @returns an array of components, the first element is the leaf, the rest are namespaces
+     */
+    public processModelFile(path: string, rootNameSpace: string): [ClassLeaf, ...NameSpaceContainer[]] {
       const content = fs.readFileSync(path, "utf8");
       const lines = content.split("\n").map((d) => d.trim());
       const regexDeclaration =
@@ -189,26 +242,33 @@ export namespace Composite {
       const classContent = lines
         .slice(lines.findIndex((d) => d.indexOf("{")) + 1, lines.indexOf("}"))
         .join("\n");
+      
+      // check if class name is equal to the namespace
       if (className == rootNameSpace) {
         return [new ClassLeaf(className, classContent)];
       }
 
+      // check if class name contains the root namespace
       if (className.indexOf(rootNameSpace) > -1) {
+        // clean up the class name
         className = className.replace(rootNameSpace, "");
+        // check the last namespace names in the class name
         if (this.lastNameSpace.length > 0) {
+          // clean up the classe name
           className = this.lastNameSpace.reduce((prev, cur) => {
             return prev.replace(cur, "");
           }, className);
         }
       }
 
-      const names = Helpers.splitTitleCase(className);
-      const { length, [length - 1]: last } = names;
+      // split the class name by the namespace
+      const names = Helpers.splitTitleCase(className).reverse();
+      // the first element is the leaf
+      const [last, ...rest] = names;
       const leaf = new ClassLeaf(last, classContent);
-      const nameSpaces = names
-        .slice(0, length - 1)
-        .map((name) => new NameSpaceContainer(name));
+      const nameSpaces = rest.reverse().map((name) => new NameSpaceContainer(name));
       leaf.setSuperClassName(superClassName);
+      leaf.setFullQualifiedName([...this.lastNameSpace, ...nameSpaces]);
       return [leaf, ...nameSpaces];
     }
   }
