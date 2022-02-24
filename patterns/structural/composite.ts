@@ -124,10 +124,16 @@ export namespace Composite {
   export class NameSpaceContainer implements Component {
     private children: Component[] = [];
 
-    constructor(public name: string) {}
+    constructor(public name: string, children?: Component[]) {
+      children && this.setChildren(children);
+    }
 
     public add(component: Component) {
       this.children.push(component);
+    }
+
+    public setChildren(children: Component[]) {
+      this.children = children;
     }
 
     public contains(name: string) {
@@ -275,6 +281,7 @@ export namespace Composite {
 
   export class FileStream {
     private builder = new NameSpaceBuilder();
+    private nameSpaces: NameSpaceContainer[];
     constructor(builder: NameSpaceBuilder) {
       this.builder = builder;
     }
@@ -296,7 +303,28 @@ export namespace Composite {
           Helpers.toFileName(ns.name) + ".model.ts"
         );
         fs.writeFileSync(fullPath, ns.execute());
+        this.nameSpaces.push(ns);
       });
+    }
+
+    public setNameSpaces(nameSpaces: NameSpaceContainer[]) {
+      this.nameSpaces = nameSpaces;
+    }
+    /** Update all the references
+     * @param  {string} srcPath the path to the source directory
+     */
+    public updateReferences(srcPath: string){
+      // find all files in the directory
+      const paths = glob.sync(srcPath + "/**/*.ts", {
+        nodir: true,
+        ignore: [srcPath+"**/*.model.ts"],
+      });
+      // find all the references
+      const references = paths.forEach(cur => {
+        const content = fs.readFileSync(cur, "utf8");
+        
+      });
+
     }
   }
 

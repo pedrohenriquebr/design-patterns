@@ -1,5 +1,7 @@
 import * as fs from "fs";
+import glob, { sync } from 'glob';
 import { Composite } from "./../patterns";
+const { NameSpaceContainer, ClassLeaf } = Composite;
 /**
  * I need a split up a class name model into hierarchical parts from models directory.
  *
@@ -36,10 +38,48 @@ import { Composite } from "./../patterns";
 const ROOT_DIR = "./tests/assets/app/pages/models/";
 const TEMP_DIR = "./tests/assets/temp/";
 const ROOT_NAME_SPACE = "BussinessLogic";
+const APP_ROOT_DIR  = './tests/assets/app/';
+
+
+jest.mock('fs', () => {
+  const fs = jest.requireActual('fs');
+  return {
+    ...fs,
+    'readFileSync': jest.fn((...args) => {
+      if(global.enabled_mock){
+        return null;
+      }
+      return fs.readFileSync(...args);
+    }),
+    'writeFileSync': jest.fn((...args) => {
+      if(global.enabled_mock){
+        return null;
+      }
+      return fs.writeFileSync(...args);
+    })
+  };
+});
+
+jest.mock('glob', () => {
+  const glob = jest.requireActual('glob');
+  return {
+    ...glob,
+    'sync': jest.fn((...args) => {
+      if(global.enabled_mock){
+        return null;
+      }
+      return glob.sync(...args);
+    })
+  };
+});
+
+
 
 let obj = new Composite.NameSpaceBuilder();
+
 beforeEach(() => {
   obj = new Composite.NameSpaceBuilder();
+  global.enabled_mock = false;
 });
 
 // List directory contents
@@ -151,6 +191,69 @@ describe('Test the leaf components', () => {
       '  projectName: string;\n'+
       '  statusId?: number;\n'+'}\n');
   });
+});
+
+
+describe("Change references ", () => {
+  const stream = new Composite.FileStream(obj);
+  let fileContent =
+    "import { BussinessLogicPendingCollectionInnerBussinessFooBarExample }" +
+    "from './models/bussiness-logic/pending-collection/inner-bussiness/bussiness-logic-pending-collection-inner-bussiness-example.model';\n" +
+    "\n\npublic doSomethig(model: BussinessLogicPendingCollectionInnerBussinessFooBarExample) {\n" +
+    "  return model.projectName;\n" +
+    "}\n";
+
+  const expectedFileContent =
+    'import { BussinesLogic } from "./models/bussiness-logic/bussiness-logic";\n' +
+    "\n\npublic doSomethig(model: BussinessLogic.PendingCollection.InnerBussiness.Foo.Bar.Example) {\n" +
+    "  return model.projectName;\n" +
+    "}\n";
+  const readFileMock = fs.readFileSync as jest.MockedFunction<
+    typeof fs.readFileSync
+  >;
+  const writeFileMock = fs.writeFileSync as jest.MockedFunction<
+    typeof fs.writeFileSync
+  >;
+  const syncMock = glob.sync as jest.MockedFunction<typeof glob.sync>;
+  const rootTree = new NameSpaceContainer("BussinessLogic", [
+    new NameSpaceContainer("PendingCollection", [
+      new NameSpaceContainer("InnerBussiness", [
+        new NameSpaceContainer("Foo", [
+          new NameSpaceContainer("Bar", [
+            new ClassLeaf(
+              "Example",
+              "public name: string;\npublic goals: number;\n"
+            ),
+          ]),
+        ]),
+      ]),
+    ]),
+  ]);
+
+  beforeEach(() => {
+    global.enabled_mock = true;
+    writeFileMock.mockImplementation((path, content) => {
+      fileContent = content as string;
+    });
+
+    readFileMock.mockReturnValue(fileContent);
+
+    stream.setNameSpaces([rootTree]);
+    syncMock.mockReturnValue(['./tests/assets/app/pages/app.component.ts']);
+  });
+
+
+  it('check the content ', () => {
+    expect(fs.readFileSync('foobar', 'utf8')).toBe(fileContent);
+  });
+
+  it("update imports", () => {
+    // mock the function readFileSync
+    stream.updateReferences(APP_ROOT_DIR);
+    expect(fileContent).toBe(expectedFileContent);
+  });
+
+  it("update references", () => {});
 });
 
 // for each file:
