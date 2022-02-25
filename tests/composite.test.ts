@@ -194,12 +194,15 @@ describe('Test the leaf components', () => {
 });
 
 
-describe("Change references ", () => {
+describe.only("Change references ", () => {
   const stream = new Composite.FileStream(obj);
   let fileContent =
     "import { BussinessLogicPendingCollectionInnerBussinessFooBarExample }" +
     "from './models/bussiness-logic/pending-collection/inner-bussiness/bussiness-logic-pending-collection-inner-bussiness-example.model';\n" +
     "\n\npublic doSomethig(model: BussinessLogicPendingCollectionInnerBussinessFooBarExample) {\n" +
+    "  return model.projectName;\n" +
+    "}\n\n"+
+    "public doSomethig2(model: BussinessLogicPendingCollectionInnerBussinessFooBarExample) {\n" +
     "  return model.projectName;\n" +
     "}\n";
 
@@ -207,7 +210,11 @@ describe("Change references ", () => {
     'import { BussinessLogic }from \'./models/bussiness-logic.model\';\n' +
     "\n\npublic doSomethig(model: BussinessLogic.PendingCollection.InnerBussiness.Foo.Bar.Example) {\n" +
     "  return model.projectName;\n" +
+    "}\n\n"+
+    "public doSomethig2(model: BussinessLogic.PendingCollection.InnerBussiness.Foo.Bar.Example) {\n" +
+    "  return model.projectName;\n" +
     "}\n";
+
   const readFileMock = fs.readFileSync as jest.MockedFunction<
     typeof fs.readFileSync
   >;

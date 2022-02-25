@@ -1,6 +1,6 @@
 //@ts-nocheck
 import { Component, OnInit } from "@angular/core";
-import { BussinessLogic } from "./models/bussiness-logic/bussiness-logic.model";
+import { BussinessLogicPendingCollectionInnerBussinessFooBarExample } from "./models/bussiness-logic/pending-collection/inner-bussiness/bussiness-logic-pending-collection-inner-bussiness-example.model";
 @Component({
   selector: "app-root",
   template: `
@@ -22,11 +22,11 @@ export class AppComponent implements OnInit {
   constructor() {}
 
   ngOnInit() {
-    const model : BussinessLogic;
+    const model : BussinessLogicPendingCollectionInnerBussinessFooBarExample;
     const result = this.doOperation(model);
   }
 
-  public doOperation(model: BussinessLogic) {
+  public doOperation(model: BussinessLogicPendingCollectionInnerBussinessFooBarExample) {
     // do something
     return {
       ...model,

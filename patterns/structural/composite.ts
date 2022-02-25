@@ -3,7 +3,7 @@ import * as path from "path";
 import glob from "glob";
 import prompts from "prompts";
 export namespace Composite {
-   class Helpers {
+   export class Helpers {
     public static titleCase(rootName: string): string {
       const parts = rootName.split("-");
       let result = "";
@@ -58,7 +58,6 @@ export namespace Composite {
     }
 
     public static listDir(filePath: string) {
-      console.log('listDir: ' + filePath); 
       const files = fs.readdirSync(filePath);
       return files;
     }
@@ -420,7 +419,7 @@ export namespace Composite {
               const newImport = (component as ClassLeaf).getFullQualifiedName();
               let newContent = content
                 .replace(className, newImport.split(".")[0])
-                .replace(className, newImport)
+                .replace(new RegExp(className,'g'), newImport)
                 .replace(pathImport,buildNewPath(dirname,fixedPath));
 
                 fs.writeFileSync(curFilePath, newContent);
@@ -463,11 +462,6 @@ export namespace Composite {
             name: "sourcePath",
             message: "Enter path to the directory containing the source code",
             initial: "./src",
-          },
-          {
-            type: prev => !prev.confirmReplace ? "text" : null,
-            name: "outDir",
-            message:"Enter path to the directory where the models will be saved",
           }
         ];
 
@@ -475,15 +469,23 @@ export namespace Composite {
 
         //@ts-ignore
         let response  = await prompts(questions);
-        const response2 = await prompts( {
-          type: "select",
-          name: "model",
-          message: "Pick a model",
-          initial: 0,
-          choices: getChoices(response),
-        },)
+        const response2 = await prompts([
+          {
+            type: (prev) => (response.confirmReplace ? null : "text"),
+            name: "outDir",
+            message:"Enter path to the directory where the models will be saved",
+            initial: response.path
+          },
+          {
+            type: "select",
+            name: "model",
+            message: "Pick a model",
+            initial: 0,
+            choices: getChoices(response),
+          },
+        ]);
 
-        response = {...response, ...response2};
+        response = {...response, ...response2, outDir: response2.outDir || response.path};
         const builder = new NameSpaceBuilder();
         const fileStream = new FileStream(builder);
         
