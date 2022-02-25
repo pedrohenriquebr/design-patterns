@@ -204,7 +204,7 @@ describe("Change references ", () => {
     "}\n";
 
   const expectedFileContent =
-    'import { BussinesLogic } from "./models/bussiness-logic/bussiness-logic";\n' +
+    'import { BussinessLogic }from \'./models/bussiness-logic.model\';\n' +
     "\n\npublic doSomethig(model: BussinessLogic.PendingCollection.InnerBussiness.Foo.Bar.Example) {\n" +
     "  return model.projectName;\n" +
     "}\n";
@@ -215,15 +215,16 @@ describe("Change references ", () => {
     typeof fs.writeFileSync
   >;
   const syncMock = glob.sync as jest.MockedFunction<typeof glob.sync>;
+  const leaf = new ClassLeaf(
+    "Example",
+    "public name: string;\npublic goals: number;\n"
+  );
   const rootTree = new NameSpaceContainer("BussinessLogic", [
     new NameSpaceContainer("PendingCollection", [
       new NameSpaceContainer("InnerBussiness", [
         new NameSpaceContainer("Foo", [
           new NameSpaceContainer("Bar", [
-            new ClassLeaf(
-              "Example",
-              "public name: string;\npublic goals: number;\n"
-            ),
+            leaf        
           ]),
         ]),
       ]),
@@ -232,14 +233,32 @@ describe("Change references ", () => {
 
   beforeEach(() => {
     global.enabled_mock = true;
+    leaf.setFullQualifiedName([
+      "BussinessLogic",
+      "PendingCollection",
+      "InnerBussiness",
+      "Foo",
+      "Bar",
+    ]);
+
+    leaf.setOriginalName('BussinessLogicPendingCollectionInnerBussinessFooBarExample');
+
     writeFileMock.mockImplementation((path, content) => {
       fileContent = content as string;
     });
-
     readFileMock.mockReturnValue(fileContent);
-
     stream.setNameSpaces([rootTree]);
     syncMock.mockReturnValue(['./tests/assets/app/pages/app.component.ts']);
+    obj = new Composite.NameSpaceBuilder();
+    obj.setFlatLeafs(new Map<string, Composite.Component>([
+      ['BussinessLogicPendingCollectionInnerBussinessFooBarExample', leaf]
+    ]));
+    stream.setFlatLeafsPaths(new Map([
+      ['BussinessLogicPendingCollectionInnerBussinessFooBarExample', {
+        component: leaf,
+        path: './tests/assets/app/pages/models/bussiness-logic.model.ts'
+      }]
+    ]))
   });
 
 
@@ -247,13 +266,11 @@ describe("Change references ", () => {
     expect(fs.readFileSync('foobar', 'utf8')).toBe(fileContent);
   });
 
-  it("update imports", () => {
+  it("update references", () => {
     // mock the function readFileSync
     stream.updateReferences(APP_ROOT_DIR);
     expect(fileContent).toBe(expectedFileContent);
   });
-
-  it("update references", () => {});
 });
 
 // for each file:

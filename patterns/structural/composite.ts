@@ -3,7 +3,7 @@ import * as path from "path";
 import glob from "glob";
 import prompts from "prompts";
 export namespace Composite {
-  export class Helpers {
+   class Helpers {
     public static titleCase(rootName: string): string {
       const parts = rootName.split("-");
       let result = "";
@@ -31,6 +31,12 @@ export namespace Composite {
       return result;
     }
 
+    /** Split a string into an array of words
+     *  Eg. "TooManyWords" => ["Too", "Many", "Words"]
+     * 
+     * @param  {string} x
+     * @returns string
+     */
     public static splitTitleCase(x: string): string[] {
       return (
         [...x]
@@ -52,6 +58,7 @@ export namespace Composite {
     }
 
     public static listDir(filePath: string) {
+      console.log('listDir: ' + filePath); 
       const files = fs.readdirSync(filePath);
       return files;
     }
@@ -67,6 +74,7 @@ export namespace Composite {
     public superClassName: string = "";
     private content: string = "";
     private fullQualifiedName: string[] = [];
+    private originalName: string = "";
 
     constructor(name: string, content: string) {
       this.content = content;
@@ -107,6 +115,14 @@ export namespace Composite {
      */
     public get hasSuperClass(): boolean {
       return this.superClassName !== "";
+    }
+
+    public setOriginalName(originalName: string) {
+      this.originalName = originalName.trim();
+    }
+
+    public getOriginalName(): string {
+      return this.originalName;
     }
     
 
@@ -153,6 +169,10 @@ export namespace Composite {
   export class NameSpaceBuilder {
     constructor() {}
     private flatNameSpaces: Map<string, Component> = new Map();
+    /**
+     * Array that contains map of original names with the component
+     */
+    private flatLeafs: Map<string, Component> = new Map();
     private lastNameSpace: string[] = [];
 
     
@@ -199,11 +219,18 @@ export namespace Composite {
               return cur;
             }, rootNamespace);
             result.add(leaf);
+            this.flatLeafs.set(leaf.getOriginalName(), leaf);
           }
         }
       });
 
       return rootNamespace;
+    }
+
+    public reset(){
+      this.flatNameSpaces = new Map();
+      this.flatLeafs = new Map();
+      this.lastNameSpace = [];
     }
     
     /** Generate a leaf from a path
@@ -225,6 +252,7 @@ export namespace Composite {
 
       let className = "";
       let superClassName = "";
+      let originalName = "";
       let m;
 
       while ((m = regexDeclaration.exec(content)) !== null) {
@@ -253,7 +281,7 @@ export namespace Composite {
       if (className == rootNameSpace) {
         return [new ClassLeaf(className, classContent)];
       }
-
+      originalName = className;
       // check if class name contains the root namespace
       if (className.indexOf(rootNameSpace) > -1) {
         // clean up the class name
@@ -275,13 +303,32 @@ export namespace Composite {
       const nameSpaces = rest.reverse().map((name) => new NameSpaceContainer(name));
       leaf.setSuperClassName(superClassName);
       leaf.setFullQualifiedName([...this.lastNameSpace, ...nameSpaces]);
+      leaf.setOriginalName(originalName);
       return [leaf, ...nameSpaces];
     }
+
+    public setFlatLeafs(flatLeafs: Map<string, Component>) {
+      this.flatLeafs = flatLeafs;
+    }
+
+    public getFlatLeafs(): Map<string, Component> {
+      return this.flatLeafs;
+    }
+
+    public setFlatNameSpaces(flatNameSpaces: Map<string, Component>) {
+      this.flatNameSpaces = flatNameSpaces;
+    }
+
+    public getFlatNameSpaces(): Map<string, Component> {
+      return this.flatNameSpaces;
+    }
+
   }
 
   export class FileStream {
     private builder = new NameSpaceBuilder();
-    private nameSpaces: NameSpaceContainer[];
+    private nameSpaces: NameSpaceContainer[]=[];
+    private flatLeafsPaths = new Map<string, {component:Component, path:string}>();
     constructor(builder: NameSpaceBuilder) {
       this.builder = builder;
     }
@@ -293,7 +340,17 @@ export namespace Composite {
         if (!fs.lstatSync(srcPath + "/" + file).isDirectory()) {
           return null;
         }
-        return this.builder.build(srcPath + "/" + file, models);
+        this.builder.reset();
+        const ns = this.builder.build(srcPath + "/" + file, models);
+        for(var [fullQClassName, component] of this.builder.getFlatLeafs().entries()){
+          this.flatLeafsPaths.set(fullQClassName,{
+            component,
+            path: path.join(
+              path.resolve(outDir),
+              Helpers.toFileName(ns.name) + ".model.ts"
+            )});
+        }
+        return ns;
       });
 
       nameSpaces.forEach((ns) => {
@@ -310,6 +367,12 @@ export namespace Composite {
     public setNameSpaces(nameSpaces: NameSpaceContainer[]) {
       this.nameSpaces = nameSpaces;
     }
+
+    public setFlatLeafsPaths(flatLeafsPaths: Map<string, {component:Component, path:string}>) {
+      this.flatLeafsPaths = flatLeafsPaths;
+    }
+
+
     /** Update all the references
      * @param  {string} srcPath the path to the source directory
      */
@@ -319,9 +382,52 @@ export namespace Composite {
         nodir: true,
         ignore: [srcPath+"**/*.model.ts"],
       });
+
+      const buildNewPath = (dirname:string, fixedPath:string) => {
+        return (
+          "'./" +
+          path
+            .normalize(path.relative(dirname, fixedPath))
+            .replace('.ts','')
+            .replace("\\", "/") +
+          "'"
+        );
+      }; 
+
       // find all the references
-      const references = paths.forEach(cur => {
-        const content = fs.readFileSync(cur, "utf8");
+      const references = paths.forEach(curFilePath => {
+        const content = fs.readFileSync(curFilePath, "utf8");
+        const regexImport = /(import)\s*\{((\s)*(\w.+(\s)*(,(\s)*(\w.+))*))\}(\s)*(from)(\s)*(['"].+['"]);/gm;
+
+        let m ;
+
+        while ((m = regexImport.exec(content)) !== null) {
+          // This is necessary to avoid infinite loops with zero-width matches
+          if (m.index === regexImport.lastIndex) {
+            regexImport.lastIndex++;
+          }
+          
+          // get the second group with all the imports
+          const imports: string[] = m[2].split(",").map(d => d.trim());
+
+          // get the last group with the path
+          const pathImport: string = m[12];
+
+          for(let [className, {component,path: fixedPath}] of this.flatLeafsPaths.entries()){
+            let dirname = path.dirname(path.resolve(curFilePath));
+            fixedPath = path.resolve(fixedPath);
+            if(imports.indexOf(className) > -1){
+              const newImport = (component as ClassLeaf).getFullQualifiedName();
+              let newContent = content
+                .replace(className, newImport.split(".")[0])
+                .replace(className, newImport)
+                .replace(pathImport,buildNewPath(dirname,fixedPath));
+
+                fs.writeFileSync(curFilePath, newContent);
+            }
+          }
+
+        }
         
       });
 
@@ -331,39 +437,68 @@ export namespace Composite {
   export class Invoker {
     public run() {
       (async () => {
-        const path = await prompts({
-          type: "text",
-          name: "path",
-          message: "Enter path to the directory containing the models",
-        });
-
-        const outDir = await prompts({
-          type: "text",
-          name: "outDir",
-          message: "Enter path to the directory where the models will be saved",
-        });
-
-        const builder = new NameSpaceBuilder();
-        // const fileStream = new FileStream(builder);
-        const dirs = Helpers.listDir(path.path);
-
-        const response = await prompts({
-          type: "select",
-          name: "model",
-          message: "Pick a model",
-          choices: [
+        const getChoices = (prev)=> {
+          const dirs = Helpers.listDir(prev.path);
+          return [
             { title: "All", value: "all" },
             ...dirs.map((d) => {
               return { title: d, value: d };
             }),
-          ],
-        });
+          ];
+        };
+        const questions = [
+          {
+            type: "text",
+            name: "path",
+            message: "Enter path to the directory containing the models"
+          },
+          {
+            type: "confirm",
+            name: "confirmReplace",
+            message: "Do you want to replace the existing models?",
+            initial: true,
+          },
+          {
+            type: "text",
+            name: "sourcePath",
+            message: "Enter path to the directory containing the source code",
+            initial: "./src",
+          },
+          {
+            type: prev => !prev.confirmReplace ? "text" : null,
+            name: "outDir",
+            message:"Enter path to the directory where the models will be saved",
+          }
+        ];
 
+      
+
+        //@ts-ignore
+        let response  = await prompts(questions);
+        const response2 = await prompts( {
+          type: "select",
+          name: "model",
+          message: "Pick a model",
+          initial: 0,
+          choices: getChoices(response),
+        },)
+
+        response = {...response, ...response2};
+        const builder = new NameSpaceBuilder();
+        const fileStream = new FileStream(builder);
+        
         if (response.model == "all") {
-          new FileStream(builder).saveToFile(path.path, outDir.outDir);
+          fileStream.saveToFile(response.path, response.outDir);
         } else {
-          new FileStream(builder).saveToFile(path.path, outDir.outDir, [...response.model]);
+          fileStream.saveToFile(response.path, response.outDir, [...response.model]);
         }
+
+
+        console.log("Processing your files...");
+        fileStream.updateReferences(response.sourcePath);
+        
+        console.log("Done!");
+        console.log("Bye!")
       })();
     }
   }
