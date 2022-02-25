@@ -144,7 +144,7 @@ describe('Test the leaf components', () => {
   const ROOT_MODEL_DIR = "./tests/assets/app/pages/models/bussiness-logic/pending-collection/";
   const ROOT_NAME_SPACE = "PendingCollection";
   const mock = { 
-    lastNameSpace : ['BussinessLogic', 'PendingCollection', 'InnerBussiness'],
+lastNameSpace : ['BussinessLogic', 'PendingCollection', 'InnerBussiness'],
     flatNameSpaces: new Map()
   }
   const mockedFunction = obj.processModelFile.bind(mock);
@@ -194,7 +194,7 @@ describe('Test the leaf components', () => {
 });
 
 
-describe.only("Change references ", () => {
+describe("Change references ", () => {
   const stream = new Composite.FileStream(obj);
   let fileContent =
     "import { BussinessLogicPendingCollectionInnerBussinessFooBarExample }" +
