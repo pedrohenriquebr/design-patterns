@@ -188,10 +188,11 @@ export namespace Composite {
       if (models.length > 0) {
         paths = paths.filter((p) => models.indexOf(p) >= 0);
       }
+      
+      this.lastNameSpace.push(rootName);
       paths.forEach((path) => {
         // check if file is a directory
         if (fs.lstatSync(path).isDirectory()) {
-          this.lastNameSpace.push(rootName);
           const nameSpace = this.build(path);
           this.lastNameSpace.pop();
           rootNamespace.add(nameSpace);
