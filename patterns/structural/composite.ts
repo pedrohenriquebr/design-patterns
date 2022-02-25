@@ -332,6 +332,12 @@ export namespace Composite {
     constructor(builder: NameSpaceBuilder) {
       this.builder = builder;
     }
+    /** Build the name space from a path
+     * 
+     * @param  {string} srcPath - the path to the models folder
+     * @param  {string} outDir - the path to the output folder
+     * @param  {string[]=[]} models
+     */
     public saveToFile(srcPath: string, outDir: string, models: string[] = []) {
       // list dir and get all dirs
       const files = Helpers.listDir(srcPath);
