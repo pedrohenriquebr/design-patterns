@@ -1,6 +1,6 @@
 
 import fs from 'fs';
-import { Composite } from './../patterns';
+import { Composite } from '..';
 
 const ROOT_DIR = "./tests/assets/app/pages";
 const MODELS_DIR = "./tests/assets/app/pages/models";

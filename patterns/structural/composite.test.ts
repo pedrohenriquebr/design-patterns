@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import glob, { sync } from 'glob';
-import { Composite } from "./../patterns";
+import { Composite } from "..";
 const { NameSpaceContainer, ClassLeaf } = Composite;
 /**
  * I need a split up a class name model into hierarchical parts from models directory.
