@@ -6,7 +6,7 @@
 
 ## Overview
 
-This is a collection of design patterns that I'm learning from "Design Patterns Head First"
+This is a collection of design patterns that I'm learning from "Design Patterns Head First" and from [Refactoring Guru](https://refactoring.guru/)
 
 - [Creational](#creational)
 - [Structural](#structural)
