@@ -1,10 +1,12 @@
-# design-patterns
-Design Patterns
+# Design Patterns
+
+![image](https://user-images.githubusercontent.com/25212918/157861706-0c3bd98a-b734-4753-afed-30c244cecf73.png)
+
 
 
 ## Overview
 
-This is a collection of design patterns that I am studying.
+This is a collection of design patterns that I'm learning from "Design Patterns Head First"
 
 - [Creational](#creational)
 - [Structural](#structural)
